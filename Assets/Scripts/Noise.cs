@@ -18,9 +18,14 @@ public static class Noise {
 
         var rng = new System.Random(seed);
 
+        float absMaxHeight = 0;
+
         for (int i = 0; i < octaves; ++i)
         {
             randSeeds[i] = new Vector2(rng.Next(-100000, 100000), rng.Next(-100000, 100000));
+
+            absMaxHeight += ampl;
+            ampl *= amplitude;
         }
 
         for (int y = 0; y < height; ++y)
@@ -45,17 +50,17 @@ public static class Noise {
                 maxHeight = Mathf.Max(maxHeight, totalHeight);
                 minHeight = Mathf.Min(minHeight, totalHeight);
 
-                map[y, x] = totalHeight;
+                map[y, x] = totalHeight/absMaxHeight;
             }
         }
 
-        for (int y = 0; y < height; ++y)
-        {
-            for (int x = 0; x < width; ++x)
-            {
-                map[y, x] = Mathf.InverseLerp(minHeight, maxHeight, map[y, x]);
-            }
-        }
+       // for (int y = 0; y < height; ++y)
+       // {
+       //     for (int x = 0; x < width; ++x)
+       //     {
+       //         map[y, x] = Mathf.InverseLerp(minHeight, maxHeight, map[y, x]);
+       //     }
+       // }
 
         return map;
     }

@@ -79,6 +79,25 @@ public class MapGenerator : MonoBehaviour {
         return MeshGenerator.GenerateTerrianMesh(noiseMap, meshHeightMulti, lod, heightAdjuestCurve);
     }
 
+    public Texture2D RequestTextureData(Vector2 center)
+    {
+        var noiseMap = Noise.GenerateNoiseMap(meshSize, meshSize, seed, scale, octaves, amplitude, frequency, center);
+
+        if (useFalloff)
+        {
+            var falloffData = FalloffGenerator.GenerateFalloffMap(meshSize);
+            for (int y = 0; y < meshSize; y++)
+            {
+                for (int x = 0; x < meshSize; x++)
+                {
+                    noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffData[x, y]);
+                }
+            }
+        }
+
+        return TextureGenerator.TextureFromHeightMap(noiseMap, layers);
+    }
+
     void OnValidate()
     {
         meshSize = meshSize > 0 ? meshSize : 1;
