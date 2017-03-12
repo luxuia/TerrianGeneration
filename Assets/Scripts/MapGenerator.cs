@@ -63,14 +63,15 @@ public class MapGenerator : MonoBehaviour {
 
     public MeshData RequestMeshData(Vector2 center)
     {
-        var noiseMap = Noise.GenerateNoiseMap(meshSize, meshSize, seed, scale, octaves, amplitude, frequency, center);
+        var fixedMeshSize = meshSize + 1;
+        var noiseMap = Noise.GenerateNoiseMap(fixedMeshSize, fixedMeshSize, seed, scale, octaves, amplitude, frequency, center);
 
         if (useFalloff)
         {
-            var falloffData = FalloffGenerator.GenerateFalloffMap(meshSize);
-            for (int y = 0; y < meshSize; y++)
+            var falloffData = FalloffGenerator.GenerateFalloffMap(fixedMeshSize);
+            for (int y = 0; y < fixedMeshSize; y++)
             {
-                for (int x = 0; x < meshSize; x++)
+                for (int x = 0; x < fixedMeshSize; x++)
                 {
                     noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffData[x, y]);
                 }
@@ -81,14 +82,15 @@ public class MapGenerator : MonoBehaviour {
 
     public Texture2D RequestTextureData(Vector2 center)
     {
-        var noiseMap = Noise.GenerateNoiseMap(meshSize, meshSize, seed, scale, octaves, amplitude, frequency, center);
+        var fixedMeshSize = meshSize + 1;
+        var noiseMap = Noise.GenerateNoiseMap(fixedMeshSize, fixedMeshSize, seed, scale, octaves, amplitude, frequency, center);
 
         if (useFalloff)
         {
-            var falloffData = FalloffGenerator.GenerateFalloffMap(meshSize);
-            for (int y = 0; y < meshSize; y++)
+            var falloffData = FalloffGenerator.GenerateFalloffMap(fixedMeshSize);
+            for (int y = 0; y < fixedMeshSize; y++)
             {
-                for (int x = 0; x < meshSize; x++)
+                for (int x = 0; x < fixedMeshSize; x++)
                 {
                     noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffData[x, y]);
                 }
@@ -103,6 +105,6 @@ public class MapGenerator : MonoBehaviour {
         meshSize = meshSize > 0 ? meshSize : 1;
         scale = scale > 0 ? scale : 1;
 
-        DrawMap();
+        //DrawMap();
     }
 }

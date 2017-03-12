@@ -33,7 +33,7 @@ public class MeshGenerator {
             {
                 float height = curve.Evaluate(heightMap[y, x]) * heightMulti;
 
-                Vector3 vertexPos = new Vector3(topLeftX + x, height, topLeftZ - y);
+                Vector3 vertexPos = new Vector3(x, height, y);
                 Vector2 uv = new Vector2(x / (float)borderSize, y / (float)borderSize);
                 meshData.AddVertex(vertexPos, uv, vertexIdxMap[y/meshSimpleInc, x/meshSimpleInc]);
 
@@ -46,8 +46,8 @@ public class MeshGenerator {
                     int c = vertexIdxMap[yy + 1, xx];
                     int d = vertexIdxMap[yy + 1, xx + 1];
 
-                    meshData.AddTriangle(a, b, c);
-                    meshData.AddTriangle(b, d, c);
+                    meshData.AddTriangle(c, b, a);
+                    meshData.AddTriangle(c, d, b);
                 }
             }
         }

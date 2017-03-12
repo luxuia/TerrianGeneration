@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class EndlessTerrian : MonoBehaviour {
 
@@ -40,9 +41,9 @@ public class EndlessTerrian : MonoBehaviour {
 
     void UpdateTerrainChunk()
     {
-        for (int i = -ViewDist; i <= 0; ++i)
+        for (int i = -ViewDist; i <= ViewDist; ++i)
         {
-            for (int j = -ViewDist; j <= 0; ++j)
+            for (int j = -ViewDist; j <= ViewDist; ++j)
             {
                 TerrainChunk chunk = null;
                 var chunkIdx = new ChunkIdx(currentIdx.X + i, currentIdx.Z + j);
@@ -51,10 +52,22 @@ public class EndlessTerrian : MonoBehaviour {
                 {
                     chunk = new TerrainChunk(chunkIdx, ChunkSize, TerrainMaterial);
                 }
+
                 chunk.RequestShowMesh(generator);
 
                 visibleChunk[chunkIdx] = chunk;
             }
+        }
+
+        var outsideChunkds = visibleChunk.Keys.Where((chunkIdx) => chunkIdx.X < currentIdx.X- ViewDist 
+                        || chunkIdx.X > currentIdx.X+ViewDist 
+                        || chunkIdx.Z < currentIdx.Z - ViewDist 
+                        || chunkIdx.Z > currentIdx.Z +ViewDist).ToList();
+        foreach (var chunkIdx in outsideChunkds)
+        {
+            var chunk = visibleChunk[chunkIdx];
+            chunk.Destroy();
+            visibleChunk.Remove(chunkIdx);
         }
     }
 
@@ -100,6 +113,7 @@ public class EndlessTerrian : MonoBehaviour {
         public GameObject obj;
         public MeshFilter meshFilter;
         public MeshRenderer meshRenderer;
+        public MeshCollider meshCollider;
 
         public TerrainChunk(ChunkIdx idx, float chunkSize, Material material)
         {
@@ -110,6 +124,8 @@ public class EndlessTerrian : MonoBehaviour {
             obj = new GameObject(chunkIdx.ToString());
             meshFilter = obj.AddComponent<MeshFilter>();
             meshRenderer = obj.AddComponent<MeshRenderer>();
+            meshCollider = obj.AddComponent<MeshCollider>();
+
             meshRenderer.material = material;
 
             obj.transform.position = new Vector3(center.x, 0, center.y);
@@ -123,7 +139,28 @@ public class EndlessTerrian : MonoBehaviour {
 
                 meshFilter.sharedMesh = meshData.CreateMesh();
                 meshRenderer.material.mainTexture = generator.RequestTextureData(center);
+                meshCollider.sharedMesh = meshFilter.sharedMesh;
             }
+        }
+
+        public void Destroy()
+        {
+            if (meshFilter)
+            {
+                if (meshFilter.sharedMesh) 
+                    GameObject.Destroy(meshFilter.sharedMesh);
+                GameObject.Destroy(meshFilter);
+            }
+            if (meshRenderer)
+            {
+                if (meshRenderer.material.mainTexture)
+                {
+                    GameObject.Destroy(meshRenderer.material.mainTexture);
+                }
+                GameObject.Destroy(meshRenderer);
+            }
+
+            GameObject.Destroy(obj);
         }
     }
 }

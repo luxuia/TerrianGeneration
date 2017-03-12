@@ -47,10 +47,13 @@ public static class Noise {
                     ampl *= amplitude;
                 }
 
-                maxHeight = Mathf.Max(maxHeight, totalHeight);
-                minHeight = Mathf.Min(minHeight, totalHeight);
+               // maxHeight = Mathf.Max(maxHeight, totalHeight);
+               // minHeight = Mathf.Min(minHeight, totalHeight);
 
                 map[y, x] = totalHeight/absMaxHeight;
+
+               // var debug = offset + new Vector2(x, y);
+               // Debug.Log(totalHeight + ", " + debug + ", "+ height + ", " + width);
             }
         }
 
