@@ -191,8 +191,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Target: {fileID: 1918719694}
-  Dist: 5.05
-  LookDir: {x: 1, y: -1, z: 1}
+  Dist: 15
+  LookDir: {x: 1, y: -2, z: 1}
 --- !u!1 &503863777
 GameObject:
   m_ObjectHideFlags: 0
@@ -367,7 +367,7 @@ GameObject:
   - component: {fileID: 655203878}
   - component: {fileID: 655203881}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: Terrian
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -385,7 +385,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   drawMode: 1
-  meshSize: 100
+  meshSize: 20
   scale: 25.74
   seed: 11
   octaves: 4
@@ -492,7 +492,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Viewer: {fileID: 200076141}
-  ViewDist: 1
+  ViewDist: 4
   TerrainMaterial: {fileID: 2100000, guid: ef9d6affd500e7d458e6a1c74622f14e, type: 2}
 --- !u!1 &655880351
 GameObject:
@@ -588,7 +588,7 @@ MonoBehaviour:
   visible: 1
   isActivated: 1
   showDebugRadius: 0
-  selected: 0
+  selected: 1
   useFixedUpdate: 0
   isUseGuiLayout: 1
   dynamicJoystick: 0

@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
+using System.Threading;
 
 public class MapGenerator : MonoBehaviour {
 
@@ -26,6 +28,10 @@ public class MapGenerator : MonoBehaviour {
     public bool useFalloff;
 
     public LayerColorData[] layers;
+
+
+    Queue<ThreadInfo<MapData>> mMapDataQueue = new Queue<ThreadInfo<MapData>>();
+    Queue<ThreadInfo<MeshData>> mMeshDataQueue = new Queue<ThreadInfo<MeshData>>();
 
 
     public void DrawMap()
@@ -61,7 +67,7 @@ public class MapGenerator : MonoBehaviour {
         }
     }
 
-    public MeshData RequestMeshData(Vector2 center)
+    MapData GeneratorMapData(Vector2 center)
     {
         var fixedMeshSize = meshSize + 1;
         var noiseMap = Noise.GenerateNoiseMap(fixedMeshSize, fixedMeshSize, seed, scale, octaves, amplitude, frequency, center);
@@ -77,27 +83,62 @@ public class MapGenerator : MonoBehaviour {
                 }
             }
         }
-        return MeshGenerator.GenerateTerrianMesh(noiseMap, meshHeightMulti, lod, heightAdjuestCurve);
+        return new MapData(noiseMap);
     }
 
-    public Texture2D RequestTextureData(Vector2 center)
+    public void RequestMapData(Vector2 center, Action<MapData> callback)
     {
-        var fixedMeshSize = meshSize + 1;
-        var noiseMap = Noise.GenerateNoiseMap(fixedMeshSize, fixedMeshSize, seed, scale, octaves, amplitude, frequency, center);
-
-        if (useFalloff)
+        ThreadStart thread = delegate ()
         {
-            var falloffData = FalloffGenerator.GenerateFalloffMap(fixedMeshSize);
-            for (int y = 0; y < fixedMeshSize; y++)
+            var mapData = GeneratorMapData(center);
+
+            lock(mMapDataQueue)
             {
-                for (int x = 0; x < fixedMeshSize; x++)
-                {
-                    noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffData[x, y]);
-                }
+                mMapDataQueue.Enqueue(new ThreadInfo<MapData>(callback, mapData));
+            }
+        };
+
+        new Thread(thread).Start();
+    }
+
+    public void RequestMeshData(MapData mapData, int overrideLod, Action<MeshData> callback)
+    {
+        ThreadStart thread = delegate ()
+        {
+            var meshData = MeshGenerator.GenerateTerrianMesh(mapData.HeightMap, meshHeightMulti, overrideLod, heightAdjuestCurve);
+
+            lock(mMeshDataQueue)
+            {
+                mMeshDataQueue.Enqueue(new ThreadInfo<MeshData>(callback, meshData));
+            }
+        };
+
+        new Thread(thread).Start();
+    }
+
+    public Texture2D RequestTextureData(MapData mapData)
+    {
+        return TextureGenerator.TextureFromHeightMap(mapData.HeightMap, layers);
+    }
+
+    void Update()
+    {
+        if (mMapDataQueue.Count > 0)
+        {
+            for (int i = 0; i < mMapDataQueue.Count; ++i)
+            {
+                var info = mMapDataQueue.Dequeue();
+                info.callback(info.param);
             }
         }
-
-        return TextureGenerator.TextureFromHeightMap(noiseMap, layers);
+        if (mMeshDataQueue.Count > 0)
+        {
+            for (int i = 0; i < mMeshDataQueue.Count; ++i)
+            {
+                var info = mMeshDataQueue.Dequeue();
+                info.callback(info.param);
+            }
+        }
     }
 
     void OnValidate()
@@ -106,5 +147,27 @@ public class MapGenerator : MonoBehaviour {
         scale = scale > 0 ? scale : 1;
 
         //DrawMap();
+    }
+
+    public struct ThreadInfo<T>
+    {
+        public readonly Action<T> callback;
+        public readonly T param;
+
+        public ThreadInfo(Action<T> callback, T param)
+        {
+            this.callback = callback;
+            this.param = param;
+        }
+    }
+
+}
+
+public struct MapData
+{
+    public readonly float[,] HeightMap;
+    public MapData(float[,] heightMap)
+    {
+        HeightMap = heightMap;
     }
 }

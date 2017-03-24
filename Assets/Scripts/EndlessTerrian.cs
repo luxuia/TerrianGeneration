@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using System;
 
 public class EndlessTerrian : MonoBehaviour {
 
@@ -9,13 +10,15 @@ public class EndlessTerrian : MonoBehaviour {
     public int ViewDist = 1;
     public Material TerrainMaterial;
 
-    MapGenerator generator;
+    public static MapGenerator generator;
 
     int ChunkSize = 256;
 
     Dictionary<ChunkIdx, TerrainChunk> visibleChunk = new Dictionary<ChunkIdx, TerrainChunk>();
 
-    ChunkIdx currentIdx;
+    public static ChunkIdx currentIdx;
+
+    public static int MAX_LOD = 4;
 
 	// Use this for initialization
 	void Start () {
@@ -39,30 +42,36 @@ public class EndlessTerrian : MonoBehaviour {
         }
 	}
 
+    bool IsChunkVisible(int x, int z)
+    {
+        return x + z >= -1 && x + z <= ViewDist * 2 && z - x >= -2 * ViewDist && z - x < 2 * ViewDist;
+    }
+
     void UpdateTerrainChunk()
     {
-        for (int i = -ViewDist; i <= ViewDist; ++i)
+        for (int i = -ViewDist; i <= 2 * ViewDist; ++i)
         {
-            for (int j = -ViewDist; j <= ViewDist; ++j)
+            for (int j = -ViewDist; j <= 2 * ViewDist; ++j)
             {
-                TerrainChunk chunk = null;
-                var chunkIdx = new ChunkIdx(currentIdx.X + i, currentIdx.Z + j);
-                visibleChunk.TryGetValue(chunkIdx, out chunk);
-                if (chunk == null)
+                if (IsChunkVisible(i, j))
                 {
-                    chunk = new TerrainChunk(chunkIdx, ChunkSize, TerrainMaterial);
+                    TerrainChunk chunk = null;
+                    var chunkIdx = new ChunkIdx(currentIdx.X + i, currentIdx.Z + j);
+                    visibleChunk.TryGetValue(chunkIdx, out chunk);
+                    if (chunk == null)
+                    {
+                        chunk = new TerrainChunk(chunkIdx, ChunkSize, TerrainMaterial);
+                    } else
+                    {
+                        chunk.UpdateChunk();
+                    }
+
+                    visibleChunk[chunkIdx] = chunk;
                 }
-
-                chunk.RequestShowMesh(generator);
-
-                visibleChunk[chunkIdx] = chunk;
             }
         }
 
-        var outsideChunkds = visibleChunk.Keys.Where((chunkIdx) => chunkIdx.X < currentIdx.X- ViewDist 
-                        || chunkIdx.X > currentIdx.X+ViewDist 
-                        || chunkIdx.Z < currentIdx.Z - ViewDist 
-                        || chunkIdx.Z > currentIdx.Z +ViewDist).ToList();
+        var outsideChunkds = visibleChunk.Keys.Where((chunkIdx) => !IsChunkVisible(chunkIdx.X-currentIdx.X, chunkIdx.Z-currentIdx.Z)).ToList();
         foreach (var chunkIdx in outsideChunkds)
         {
             var chunk = visibleChunk[chunkIdx];
@@ -106,7 +115,7 @@ public class EndlessTerrian : MonoBehaviour {
     {
         public ChunkIdx chunkIdx;
 
-        public MeshData meshData;
+        public LodMesh[] meshData;
 
         public Vector2 center;
 
@@ -114,6 +123,10 @@ public class EndlessTerrian : MonoBehaviour {
         public MeshFilter meshFilter;
         public MeshRenderer meshRenderer;
         public MeshCollider meshCollider;
+
+        MapData mapData;
+        bool mapDataReceived;
+        int previousLod;
 
         public TerrainChunk(ChunkIdx idx, float chunkSize, Material material)
         {
@@ -126,20 +139,50 @@ public class EndlessTerrian : MonoBehaviour {
             meshRenderer = obj.AddComponent<MeshRenderer>();
             meshCollider = obj.AddComponent<MeshCollider>();
 
+            previousLod = -1;
             meshRenderer.material = material;
 
             obj.transform.position = new Vector3(center.x, 0, center.y);
+
+            meshData = new LodMesh[MAX_LOD+1];
+            for (int i = 0; i < MAX_LOD+1; ++i)
+            {
+                meshData[i] = new LodMesh(i, UpdateChunk);
+            }
+
+            generator.RequestMapData(center, OnReceivedMapData);
         }
 
-        public void RequestShowMesh(MapGenerator generator)
+        void OnReceivedMapData(MapData data)
         {
-            if (meshData == null)
-            {
-                meshData = generator.RequestMeshData(center);
+            mapData = data;
+            mapDataReceived = true;
 
-                meshFilter.sharedMesh = meshData.CreateMesh();
-                meshRenderer.material.mainTexture = generator.RequestTextureData(center);
-                meshCollider.sharedMesh = meshFilter.sharedMesh;
+            UpdateChunk();
+        }
+
+        public void UpdateChunk()
+        {
+            if (mapDataReceived )
+            {
+                var lod = Mathf.Abs(currentIdx.X - chunkIdx.X) + Mathf.Abs(currentIdx.Z - chunkIdx.Z);
+                lod = Mathf.Min(lod/4, MAX_LOD);
+
+                if (previousLod != lod)
+                {
+                    var data = meshData[lod];
+                    if (data.hasMesh)
+                    {
+                        meshFilter.sharedMesh = data.mesh;
+                        meshCollider.sharedMesh = data.mesh;
+                        meshRenderer.material.mainTexture = data.texture;
+
+                        previousLod = lod;
+                    } else if (!data.hasRequest)
+                    {
+                        data.RequestMesh(mapData);
+                    }
+                }
             }
         }
 
@@ -161,6 +204,41 @@ public class EndlessTerrian : MonoBehaviour {
             }
 
             GameObject.Destroy(obj);
+        }
+    }
+
+    public class LodMesh
+    {
+        public Mesh mesh;
+        public Texture2D texture;
+
+        public bool hasMesh;
+        public bool hasRequest;
+
+        int lod;
+        Action updateCallback;
+
+        public LodMesh(int lod, Action updateCallback)
+        {
+            this.lod = lod;
+            this.updateCallback = updateCallback;
+        }
+
+
+        void OnMeshDataReceived(MeshData data)
+        {
+            mesh = data.CreateMesh();
+
+            hasMesh = true;
+
+            updateCallback();
+        }
+
+        public void RequestMesh(MapData mapData)
+        {
+            generator.RequestMeshData(mapData, lod, OnMeshDataReceived);
+            
+           texture = generator.RequestTextureData(mapData);
         }
     }
 }
