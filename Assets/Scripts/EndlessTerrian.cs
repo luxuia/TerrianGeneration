@@ -47,6 +47,16 @@ public class EndlessTerrian : MonoBehaviour {
         return x + z >= -1 && x + z <= ViewDist * 2 && z - x >= -2 * ViewDist && z - x < 2 * ViewDist;
     }
 
+    int CheckNeedBorder(TerrainChunk chunk, int x, int z)
+    {
+        TerrainChunk other = null;
+        var chunkIdx = new ChunkIdx(chunk.chunkIdx.X + x, chunk.chunkIdx.Z + z);
+        visibleChunk.TryGetValue(chunkIdx, out other);
+
+        return other != null && other.targetLod == chunk.targetLod + 1 ? 1 : 0;
+    }
+
+
     void UpdateTerrainChunk()
     {
         for (int i = -ViewDist; i <= 2 * ViewDist; ++i)
@@ -79,6 +89,11 @@ public class EndlessTerrian : MonoBehaviour {
                     TerrainChunk chunk = null;
                     var chunkIdx = new ChunkIdx(currentIdx.X + i, currentIdx.Z + j);
                     visibleChunk.TryGetValue(chunkIdx, out chunk);
+
+                    chunk.borderInfo = CheckNeedBorder(chunk, -1, 0) +
+                        (CheckNeedBorder(chunk, 0, 1) << 1) +
+                        (CheckNeedBorder(chunk, 1, 0) << 2)+
+                        (CheckNeedBorder(chunk, 0, -1) << 3);
 
                     chunk.UpdateChunk();
                 }
@@ -140,6 +155,8 @@ public class EndlessTerrian : MonoBehaviour {
 
         public int targetLod;
 
+        public int borderInfo;
+
         MapData mapData;
         bool mapDataReceived;
         int previousLod;
@@ -173,6 +190,8 @@ public class EndlessTerrian : MonoBehaviour {
         {
             mapData = data;
             mapDataReceived = true;
+
+            UpdateChunk();
         }
 
         public void UpdateLod()
@@ -190,8 +209,10 @@ public class EndlessTerrian : MonoBehaviour {
                     var data = meshData[targetLod];
                     if (data.hasMesh)
                     {
-                        meshFilter.sharedMesh = data.mesh;
-                        meshCollider.sharedMesh = data.mesh;
+                        Mesh mesh = data.GetBorderMesh(borderInfo);
+
+                        meshFilter.sharedMesh = mesh;
+                        meshCollider.sharedMesh = mesh;
                         meshRenderer.material.mainTexture = data.texture;
 
                         previousLod = targetLod;
@@ -229,6 +250,8 @@ public class EndlessTerrian : MonoBehaviour {
         public Mesh mesh;
         public Texture2D texture;
 
+        public MeshData meshData;
+
         public bool hasMesh;
         public bool hasRequest;
 
@@ -244,11 +267,16 @@ public class EndlessTerrian : MonoBehaviour {
 
         void OnMeshDataReceived(MeshData data)
         {
-            mesh = data.CreateMesh();
+            meshData = data;
 
             hasMesh = true;
 
             updateCallback();
+        }
+
+        public Mesh GetBorderMesh(int borderInfo)
+        {
+            return meshData.CreateBorderMesh(borderInfo);
         }
 
         public void RequestMesh(MapData mapData)

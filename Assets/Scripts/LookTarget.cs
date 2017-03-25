@@ -13,7 +13,7 @@ public class LookTarget : MonoBehaviour {
 	void Update () {
         if (Target != null)
         {
-            transform.position = Target.position - LookDir * Dist;
+            transform.position = Target.position - LookDir.normalized * Dist;
             transform.LookAt(Target);
         }
 	}
