@@ -61,12 +61,26 @@ public class EndlessTerrian : MonoBehaviour {
                     if (chunk == null)
                     {
                         chunk = new TerrainChunk(chunkIdx, ChunkSize, TerrainMaterial);
-                    } else
-                    {
-                        chunk.UpdateChunk();
-                    }
+                    } 
+
+                    chunk.UpdateLod();
 
                     visibleChunk[chunkIdx] = chunk;
+                }
+            }
+        }
+
+        for (int i = -ViewDist; i <= 2 * ViewDist; ++i)
+        {
+            for (int j = -ViewDist; j <= 2 * ViewDist; ++j)
+            {
+                if (IsChunkVisible(i, j))
+                {
+                    TerrainChunk chunk = null;
+                    var chunkIdx = new ChunkIdx(currentIdx.X + i, currentIdx.Z + j);
+                    visibleChunk.TryGetValue(chunkIdx, out chunk);
+
+                    chunk.UpdateChunk();
                 }
             }
         }
@@ -124,6 +138,8 @@ public class EndlessTerrian : MonoBehaviour {
         public MeshRenderer meshRenderer;
         public MeshCollider meshCollider;
 
+        public int targetLod;
+
         MapData mapData;
         bool mapDataReceived;
         int previousLod;
@@ -157,27 +173,28 @@ public class EndlessTerrian : MonoBehaviour {
         {
             mapData = data;
             mapDataReceived = true;
+        }
 
-            UpdateChunk();
+        public void UpdateLod()
+        {
+            targetLod = Mathf.Abs(currentIdx.X - chunkIdx.X) + Mathf.Abs(currentIdx.Z - chunkIdx.Z);
+            targetLod = Mathf.Min(targetLod / 4, MAX_LOD);
         }
 
         public void UpdateChunk()
         {
             if (mapDataReceived )
             {
-                var lod = Mathf.Abs(currentIdx.X - chunkIdx.X) + Mathf.Abs(currentIdx.Z - chunkIdx.Z);
-                lod = Mathf.Min(lod/4, MAX_LOD);
-
-                if (previousLod != lod)
+                if (previousLod != targetLod)
                 {
-                    var data = meshData[lod];
+                    var data = meshData[targetLod];
                     if (data.hasMesh)
                     {
                         meshFilter.sharedMesh = data.mesh;
                         meshCollider.sharedMesh = data.mesh;
                         meshRenderer.material.mainTexture = data.texture;
 
-                        previousLod = lod;
+                        previousLod = targetLod;
                     } else if (!data.hasRequest)
                     {
                         data.RequestMesh(mapData);
