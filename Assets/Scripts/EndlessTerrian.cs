@@ -160,6 +160,7 @@ public class EndlessTerrian : MonoBehaviour {
         MapData mapData;
         bool mapDataReceived;
         int previousLod;
+        int previousBorderInfo;
 
         public TerrainChunk(ChunkIdx idx, float chunkSize, Material material)
         {
@@ -204,7 +205,7 @@ public class EndlessTerrian : MonoBehaviour {
         {
             if (mapDataReceived )
             {
-                if (previousLod != targetLod)
+                if (previousLod != targetLod || previousBorderInfo != borderInfo)
                 {
                     var data = meshData[targetLod];
                     if (data.hasMesh)
@@ -212,10 +213,13 @@ public class EndlessTerrian : MonoBehaviour {
                         Mesh mesh = data.GetBorderMesh(borderInfo);
 
                         meshFilter.sharedMesh = mesh;
-                        meshCollider.sharedMesh = mesh;
                         meshRenderer.material.mainTexture = data.texture;
 
                         previousLod = targetLod;
+                        previousBorderInfo = borderInfo;
+
+                            meshCollider.sharedMesh = mesh;
+
                     } else if (!data.hasRequest)
                     {
                         data.RequestMesh(mapData);

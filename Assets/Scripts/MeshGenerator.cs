@@ -59,6 +59,7 @@ public class MeshGenerator {
             }
         }
 
+        meshData.meshSimpleInc = meshSimpleInc;
         meshData.heightMap = newHeightMap;
 
         meshData.ProcessMesh();
@@ -75,6 +76,7 @@ public class MeshData
     Vector2[] uvs;
 
     public float[,] heightMap;
+    public int meshSimpleInc;
 
     int triangleIdx;
 
@@ -135,36 +137,101 @@ public class MeshData
     public Mesh CreateBorderMesh(int borderInfo)
     {
         int length = heightMap.GetLength(0);
+        int blockCount = (length - 1) / meshSimpleInc;
 
-        if ((borderInfo & 1) == 1)
+        if ((borderInfo & 1)  > 0)
         {
-            for (int i = 1; i < length; i+=2)
+            for (int i = 1; i < blockCount; i+=2)
             {
-                var avg = (heightMap[i - 1, 0] + heightMap[i + 1, 0])/2;
-                int idx = (i - 1) * 6 * (length - 1);
+                var avg = (heightMap[(i-1)*meshSimpleInc, 0] + heightMap[(i+1)*meshSimpleInc, 0])/2;
+                int idx = (i - 1) * 6 * blockCount;
                 vertices[idx].y = avg;
                 vertices[idx + 3].y = avg;
-
-                idx = i * 6 * (length - 1);
-                vertices[idx+2].y = avg;
+                vertices[idx + 6*blockCount + 2].y = avg;
             }
-        }
-        if ((borderInfo & 2) == 2)
+        } else
         {
-            int base_idx = (length - 1) * (length - 2) * 6;
-            for (int i = 1; i < length-2; i+=2 )
+            for (int i = 1; i < blockCount; i += 2)
             {
-                var avg = (heightMap[length - 1, i - 1] + heightMap[length - 1, i + 1]) / 2;
+                var avg = heightMap[i * meshSimpleInc, 0];
+                int idx = (i - 1) * 6 * blockCount;
+                vertices[idx].y = avg;
+                vertices[idx + 3].y = avg;
+                vertices[idx + 6 * blockCount + 2].y = avg;
+            }
+        }
+        if ((borderInfo & 2) > 0)
+        {
+            int base_idx = blockCount* (blockCount-1) * 6;
+            for (int i = 1; i < blockCount; i+=2 )
+            {
+                var avg = (heightMap[length - 1, (i - 1)* meshSimpleInc] + heightMap[length - 1, (i + 1)* meshSimpleInc]) / 2;
 
-                Debug.Log(base_idx + i * 6 + 4 + ", " + vertices.Length);
-                vertices[base_idx + i*6+4].y = avg;
-                vertices[base_idx + i*6+6].y = avg;
-                vertices[base_idx + i*6+9].y = avg;
+                int idx = base_idx + (i - 1) * 6;
+                vertices[idx + 4].y = avg;
+                vertices[idx + 6].y = avg;
+                vertices[idx + 9].y = avg;
+            }
+        } else
+        {
+            int base_idx = blockCount * (blockCount - 1) * 6;
+            for (int i = 1; i < blockCount; i += 2)
+            {
+                var avg = heightMap[length - 1, i * meshSimpleInc];
+
+                int idx = base_idx + (i - 1) * 6;
+                vertices[idx + 4].y = avg;
+                vertices[idx + 6].y = avg;
+                vertices[idx + 9].y = avg;
             }
         }
 
+        if ((borderInfo & 4 ) > 0)
+        {
+            for (int i = 1; i < blockCount; i += 2)
+            {
+                var avg = (heightMap[(i - 1) * meshSimpleInc, length-1] + heightMap[(i + 1) * meshSimpleInc, length-1]) / 2;
+                int idx = (i - 1) * 6 * blockCount + 6*(blockCount-1);
+                vertices[idx + 4].y = avg;
+                vertices[idx + 6*blockCount + 1].y = avg;
+                vertices[idx + 6*blockCount + 5].y = avg;
+            }
+        } else
+        {
+            for (int i = 1; i < blockCount; i += 2)
+            {
+                var avg = heightMap[i * meshSimpleInc, length - 1];
 
+                int idx = (i - 1) * 6 * blockCount + 6 * (blockCount - 1);
+                vertices[idx + 4].y = avg;
+                vertices[idx + 6 * blockCount + 1].y = avg;
+                vertices[idx + 6 * blockCount + 5].y = avg;
+            }
+        }
+        if ((borderInfo & 8) > 0)
+        {
+            for (int i = 1; i < blockCount; i += 2)
+            {
+                var avg = (heightMap[0, (i - 1) * meshSimpleInc] + heightMap[0, (i + 1) * meshSimpleInc]) / 2;
 
+                int idx = (i - 1) * 6;
+                vertices[idx + 1].y = avg;
+                vertices[idx + 5].y = avg;
+                vertices[idx + 8].y = avg;
+            }
+        } else
+        {
+            for (int i = 1; i < blockCount; i += 2)
+            {
+                var avg = heightMap[0, i * meshSimpleInc];
+
+                int idx = (i - 1) * 6;
+                vertices[idx + 1].y = avg;
+                vertices[idx + 5].y = avg;
+                vertices[idx + 8].y = avg;
+            }
+        }
+        
 
         Mesh mesh = new Mesh();
         mesh.vertices = vertices;

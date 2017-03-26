@@ -432,7 +432,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   drawMode: 1
-  meshSize: 20
+  meshSize: 16
   scale: 25.74
   seed: 11
   octaves: 4
